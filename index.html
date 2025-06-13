@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hamster Kombat Clicker</title>
+  <style>
+    body {
+      background: #ffe5b4;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      text-align: center;
+      padding: 40px;
+      overflow: hidden;
+    }
+    h1 {
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+    #hamster {
+      width: 200px;
+      height: 200px;
+      background: url('./hm.png') no-repeat center/cover;
+      margin: 20px auto;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+      position: relative;
+      z-index: 1;
+    }
+    #hamster:active {
+      transform: scale(0.9);
+    }
+    .coin {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: url('./money.png') no-repeat center/cover;
+      animation: flyToBalance 0.7s ease-out forwards;
+      pointer-events: none;
+      z-index: 2;
+    }
+    @keyframes flyToBalance {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(var(--tx)), calc(var(--ty))) scale(0.5);
+      }
+    }
+    .stats {
+      font-size: 18px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      background-color: #ff8c42;
+      color: white;
+      box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #e6762c;
+    }
+    .shop {
+      margin-top: 30px;
+      background: #fff3dc;
+      padding: 20px;
+      border-radius: 15px;
+      display: inline-block;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .shop h2 {
+      margin-bottom: 10px;
+    }
+    .shop button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hamster Kombat Clicker 🐹</h1>
+  <div class="stats">
+    <div>💰 Монеты: <span id="coins">0</span></div>
+    <div>🔧 Уровень: <span id="level">1</span></div>
+    <div>⚡ За клик: <span id="perClick">1</span></div>
+    <div>🚀 Буст: <span id="boost">x1</span></div>
+  </div>
+  <div id="hamster"></div>
+  <div>
+    <button onclick="upgrade()">Улучшить (💰 <span id="upgradeCost">10</span>)</button>
+    <button onclick="withdraw()">Вывести монеты</button>
+  </div>
+
+  <div class="shop">
+    <h2>Магазин</h2>
+    <button onclick="buyBoost()">Купить x2 буст (💰 <span id="boostCost">50</span>)</button>
+  </div>
+
+  <script>
+    let coins = 0;
+    let level = 1;
+    let perClick = 1;
+    let upgradeCost = 10;
+    let boost = 1;
+    let boostCost = 50;
+    let lastClickTime = 0; // защита от автокликера
+
+    const coinsEl = document.getElementById('coins');
+    const levelEl = document.getElementById('level');
+    const perClickEl = document.getElementById('perClick');
+    const upgradeCostEl = document.getElementById('upgradeCost');
+    const boostEl = document.getElementById('boost');
+    const boostCostEl = document.getElementById('boostCost');
+    const hamsterEl = document.getElementById('hamster');
+
+    // Загрузка из localStorage
+    window.onload = function () {
+      const savedData = JSON.parse(localStorage.getItem('hamsterGame'));
+      if (savedData) {
+        coins = savedData.coins;
+        level = savedData.level;
+        perClick = savedData.perClick;
+        upgradeCost = savedData.upgradeCost;
+        boost = savedData.boost;
+        boostCost = savedData.boostCost;
+        updateDisplay();
+      }
+    };
+
+    function saveGame() {
+      const data = { coins, level, perClick, upgradeCost, boost, boostCost };
+      localStorage.setItem('hamsterGame', JSON.stringify(data));
+    }
+
+    hamsterEl.addEventListener('click', (e) => {
+      const now = Date.now();
+      if (now - lastClickTime < 50) return; // блокировка слишком частых кликов
+      lastClickTime = now;
+      createCoinAnimation(e, perClick * boost);
+    });
+
+    function createCoinAnimation(e, amount) {
+      const coin = document.createElement('div');
+      coin.classList.add('coin');
+
+      const hamsterRect = hamsterEl.getBoundingClientRect();
+      const targetRect = coinsEl.getBoundingClientRect();
+
+      const startX = hamsterRect.left + hamsterRect.width / 2;
+      const startY = hamsterRect.top + hamsterRect.height / 2;
+      const endX = targetRect.left + targetRect.width / 2;
+      const endY = targetRect.top + targetRect.height / 2;
+
+      const tx = endX - startX + 'px';
+      const ty = endY - startY + 'px';
+
+      coin.style.left = `${startX - 15}px`;
+      coin.style.top = `${startY - 15}px`;
+      coin.style.setProperty('--tx', tx);
+      coin.style.setProperty('--ty', ty);
+
+      document.body.appendChild(coin);
+
+      setTimeout(() => {
+        coin.remove();
+        coins += amount;
+        updateDisplay();
+        saveGame();
+      }, 700);
+    }
+
+    function upgrade() {
+      if (coins >= upgradeCost) {
+        coins -= upgradeCost;
+        level++;
+        perClick += 1;
+        upgradeCost = Math.floor(upgradeCost * 1.7);
+        updateDisplay();
+        saveGame();
+      } else {
+        alert('Недостаточно монет для улучшения!');
+      }
+    }
+
+    function withdraw() {
+      alert(`Вы вывели ${coins} монет! 🎉`);
+      coins = 0;
+      updateDisplay();
+      saveGame();
+    }
+
+    function buyBoost() {
+      if (coins >= boostCost) {
+        coins -= boostCost;
+        boost *= 2;
+        boostCost *= 3;
+        updateDisplay();
+        saveGame();
+      } else {
+        alert('Недостаточно монет на буст!');
+      }
+    }
+
+    function updateDisplay() {
+      coinsEl.textContent = coins;
+      levelEl.textContent = level;
+      perClickEl.textContent = perClick;
+      upgradeCostEl.textContent = upgradeCost;
+      boostEl.textContent = 'x' + boost;
+      boostCostEl.textContent = boostCost;
+    }
+  </script>
+</body>
+</html>
